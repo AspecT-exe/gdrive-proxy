@@ -1,29 +1,57 @@
 from fastapi import FastAPI, HTTPException
-from fastapi.staticfiles import StaticFiles
 import gdown
 import os
+import boto3
+from botocore.client import Config
+from uuid import uuid4
 
+# --- Config ---
+BUCKET_NAME = "gdrive-files"
+R2_ENDPOINT = "https://a94afe102362fdcb030e48f2b338c379.r2.cloudflarestorage.com"
+R2_ACCESS_KEY_ID = "REPLACE_THIS"  # Your public access key
+R2_SECRET_ACCESS_KEY = "REPLACE_THIS"  # Your private secret key
+
+# --- FastAPI setup ---
 app = FastAPI()
-app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/download")
 def download(file_id: str):
     try:
-        output_path = f"static/{file_id}.mp4"
+        # Generate temporary file path
+        filename = f"{uuid4().hex}.mp4"
+        output_path = f"/tmp/{filename}"
 
-        # If file already exists, return its path
-        if os.path.exists(output_path):
-            return { "download_url": f"/static/{file_id}.mp4" }
-
-        # Build the gdown URL
+        # Download from Google Drive
         url = f"https://drive.google.com/uc?id={file_id}"
         gdown.download(url, output_path, quiet=False)
 
-        # Check again
+        # Check if downloaded
         if not os.path.exists(output_path):
             raise HTTPException(status_code=404, detail="Download failed")
 
-        return { "download_url": f"/static/{file_id}.mp4" }
+        # Upload to R2
+        session = boto3.session.Session()
+        s3 = session.client(
+            service_name="s3",
+            aws_access_key_id=f892ae332b5659fabf27065778ef29b6,
+            aws_secret_access_key=4037ef6b43774f7cd6396d7ec17bce9ba36f5123c7e07e0ca9934b65a9bba59b,
+
+            endpoint_url=R2_ENDPOINT,
+            config=Config(signature_version="s3v4"),
+        )
+
+        r2_key = f"{file_id}.mp4"
+
+        with open(output_path, "rb") as f:
+            s3.upload_fileobj(f, BUCKET_NAME, r2_key)
+
+        # Delete temp file
+        os.remove(output_path)
+
+        # Construct public URL
+        public_url = f"{R2_ENDPOINT}/{r2_key}"
+
+        return { "download_url": public_url }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
