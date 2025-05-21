@@ -8,8 +8,8 @@ from uuid import uuid4
 # --- Config ---
 BUCKET_NAME = "gdrive-files"
 R2_ENDPOINT = "https://a94afe102362fdcb030e48f2b338c379.r2.cloudflarestorage.com"
-R2_ACCESS_KEY_ID = "REPLACE_THIS"  # Your public access key
-R2_SECRET_ACCESS_KEY = "REPLACE_THIS"  # Your private secret key
+R2_ACCESS_KEY_ID = "f892ae332b5659fabf27065778ef29b6"
+R2_SECRET_ACCESS_KEY = "4037ef6b43774f7cd6396d7ec17bce9ba36f5123c7e07e0ca9934b65a9bba59b"
 
 # --- FastAPI setup ---
 app = FastAPI()
@@ -33,9 +33,8 @@ def download(file_id: str):
         session = boto3.session.Session()
         s3 = session.client(
             service_name="s3",
-            aws_access_key_id=f892ae332b5659fabf27065778ef29b6,
-            aws_secret_access_key=4037ef6b43774f7cd6396d7ec17bce9ba36f5123c7e07e0ca9934b65a9bba59b,
-
+            aws_access_key_id=R2_ACCESS_KEY_ID,
+            aws_secret_access_key=R2_SECRET_ACCESS_KEY,
             endpoint_url=R2_ENDPOINT,
             config=Config(signature_version="s3v4"),
         )
